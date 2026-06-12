@@ -15,7 +15,7 @@ main:
     mov esi, string_a1
     mov edi, string_a2
     call validate
-    call calculate_fib
+    call calculate
     call print
     ret
 
@@ -63,7 +63,7 @@ validate:
     add esp, 4
     ret
 
-calculate_fib:
+calculate:
     dec esi
     dec edi
     mov ebx, result

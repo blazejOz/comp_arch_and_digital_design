@@ -1,0 +1,119 @@
+===============================================================================
+               LAB 4 CHEAT SHEET: FUNCTIONS & MEMORY ACCESS
+===============================================================================
+
+1. THE BRACKET RULE (Reading RAM)
+-------------------------------------------------------------------------------
+Brackets [] tell the CPU to look INSIDE that memory address. Ignore the segment 
+prefixes like DS: or SS: from your lab manual; the CPU manages them natively.
+
+  mov eax, my_string   --> Copies the address location (e.g., 0x4000)
+  mov eax, [my_string] --> Pulls the actual data value inside that memory slot
+
+Defaults:
+  - Using [EAX], [EBX], [ECX], [EDX] reads from Data Memory (DS segment)
+  - Using [ESP], [EBP] reads from temporary Stack Memory (SS segment)
+
+
+2. DATA SIZE MATCHING & POINTER BUMPING
+-------------------------------------------------------------------------------
+You cannot mix data sizes. Match your data allocation type to the correct 
+register size and pointer advancement value.
+
+| Alloc Type | RAM Size | Register Subsets   | Advance Wskaźnik (Pointer) |
+|------------|----------|--------------------|----------------------------|
+| DB (Byte)  | 1 Byte   | AL, BL, CL, DL     | inc esi     (or add esi, 1) |
+| DW (Word)  | 2 Bytes  | AX, BX, CX, DX     | add esi, 2                 |
+| DD (Dword) | 4 Bytes  | EAX, EBX, ECX, EDX | add esi, 4                 |
+
+Explicit Casting (When the CPU needs to be told the size explicitly):
+  mov byte [esi], 0   ; Clear 1 byte in memory
+  mov word [esi], 0   ; Clear 2 bytes in memory
+  mov dword [esi], 0  ; Clear 4 bytes in memory
+
+
+3. MEMORY SECTIONS
+-------------------------------------------------------------------------------
+SECTION .TEXT : Your executable code (loops, comparisons, math).
+SECTION .DATA : Variables initialized with data (e.g., my_str db "Test", 0).
+                Constants defined using EQU (e.g., MAX_SIZE EQU 100).
+SECTION .BSS  : Empty buffers reserved for later (e.g., buffer resb 64).
+
+
+4. THE 3 GOLDEN RULES OF LAB FUNCTIONS
+-------------------------------------------------------------------------------
+Rule A -> Arguments arrive via the Stack in REVERSE order.
+          Use EBP as a stable ruler to read them without moving ESP.
+          [ebp + 8]  = 1st Argument (the last item pushed in main)
+          [ebp + 12] = 2nd Argument
+
+Rule B -> The Volatile Register Rule.
+          Your function is ONLY allowed to modify EAX, ECX, and EDX. 
+          If you use EBX, ESI, or EDI, you MUST 'push' them to save them 
+          at the start, and 'pop' them back in reverse order at the end.
+
+Rule C -> Output goes to EAX.
+          The final answer must be loaded into EAX right before 'ret'.
+
+
+===============================================================================
+                        STANDARD LAB FUNCTION SKELETON
+===============================================================================
+section .data
+    my_string db "Hello Word Counter", 0
+    str_len   dd 18
+
+section .text
+    global main
+
+main:
+    ; 1. Push arguments in REVERSE order (2nd argument, then 1st argument)
+    push dword [str_len]    ; 2nd Arg: Pass the value of length
+    push my_string          ; 1st Arg: Pass the memory pointer address
+    
+    ; 2. Call your function
+    call my_lab_function
+    
+    ; 3. Balance the stack (2 arguments x 4 bytes each = 8 bytes)
+    add esp, 8              
+    
+    ; The final answer returned by the function is now sitting inside EAX.
+    ret
+
+
+my_lab_function:
+    ; --- PROLOGUE (Anchor the stable base frame pointer) ---
+    push ebp
+    mov ebp, esp
+    
+    ; --- SAVE PROTECTED REGISTERS (Only if you use them!) ---
+    push ebx
+    push esi
+
+    ; --- EXTRACT ARGUMENTS ---
+    mov esi, [ebp + 8]      ; ESI = Address of string (1st argument)
+    mov ecx, [ebp + 12]     ; ECX = Length of string  (2nd argument)
+
+    ; --- ALGORITHM LOGIC / LOOP ---
+    mov eax, 0              ; Clear your counter register
+
+.loop_start:
+    ; (Example: Process character via 8-bit subset)
+    mov bl, [esi]           
+    
+    ; ... your loop code, comparisons, and arithmetic here ...
+    
+    inc esi                 ; Advance pointer by 1 byte (since it's a string)
+    dec ecx                 ; Loop countdown
+    jnz .loop_start
+
+.done:
+    ; --- RESTORE PROTECTED REGISTERS (Reverse order of pushing) ---
+    pop esi
+    pop ebx
+
+    ; --- EPILOGUE (Teardown the frame pointer and return) ---
+    mov esp, ebp
+    pop ebp
+    ret                     ; Returns execution to main. EAX holds the answer.
+===============================================================================

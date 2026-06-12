@@ -11,6 +11,10 @@ for gdb(with nasm debug flags -g -F dwarf)
 nasm -g -F dwarf -f elf32 math.asm -o prog.o && gcc -m32 -g prog.o -o prog.out
 gdb -tui ./prog.out
 
+Commands to Know inside GDB TUI:
+layout asm - Splits your terminal screen to show your live assembly code lines.
+layout regs - Opens a visual box at the top showing every register updating in real-time.
+
 Syntax order: INSTRUCTION DESTINATION, SOURCE
 Mental model: destination = source
 Example:      mov eax, 27   -->   eax = 27
@@ -63,16 +67,44 @@ sub dest, src   -->  dest -= src
 inc dest        -->  dest++ (Updates flags, PRESERVES Carry Flag 'CF')
 dec dest        -->  dest-- (Updates flags, PRESERVES Carry Flag 'CF')
 
-* Implicit Multiplication (MUL):
-  Syntax: mul src
-  Math:   Multiplies EAX by 'src'. 
-  Output: 64-bit split result. Upper 32 bits -> EDX, Lower 32 bits -> EAX.
+MULTIPLICATION
+* Unsigned Multiply (mul)
+  - Formula: [EDX:EAX] = EAX * src
+  - Setup  : First number MUST be in EAX.
+  - Output : Lower 32-bits of result land in EAX, upper 32-bits in EDX.
+  - Example:
+      mov eax, 10
+      mov ebx, 5
+      mul ebx         ; EAX = 50, EDX = 0
 
-* Implicit Division (DIV):
-  Syntax: div src
-  Math:   Divides the combined 64-bit value [EDX:EAX] by 'src'.
-  Rule:   You MUST clear EDX (mov edx, 0) before dividing if dividend is 32-bit.
-  Output: EAX = Quotient (iloraz), EDX = Remainder (reszta / modulo).
+* Signed Multiply (imul)
+  - Formula: dest = dest * src
+  - Setup  : C-style syntax. Fully ignores EDX. No implicit register traps.
+  - Example:
+      mov eax, -10
+      mov ebx, 5
+      imul eax, ebx   ; EAX = -50
+
+DIVISION
+* Unsigned Division (div)
+  - Formula: [EDX:EAX] / divisor
+  - Setup  : Numerator goes to EAX. You MUST wipe EDX to 0 first!
+  - Output : EAX = Quotient (iloraz), EDX = Remainder (reszta / modulo)
+  - Example:
+      mov eax, 100    ; Numerator
+      mov edx, 0      ; CRITICAL: Clear EDX garbage!
+      mov ecx, 3      ; Divisor
+      div ecx         ; EAX = 33, EDX = 1
+
+* Signed Division (idiv)
+  - Formula: [EDX:EAX] / divisor
+  - Setup  : Numerator goes to EAX. You MUST use 'cdq' to copy sign to EDX!
+  - Output : EAX = Quotient, EDX = Remainder
+  - Example:
+      mov eax, -100   ; Numerator
+      cdq             ; CRITICAL: Extends negative sign bit into EDX
+      mov ecx, 3      ; Divisor
+      idiv ecx        ; EAX = -33, EDX = -1
 
 
 5. THE STACK
