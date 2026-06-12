@@ -1,6 +1,6 @@
 section .data
     msg db "%s", 10, 0
-    error_msg db "error", 10, 0
+    error_msg db "error", 0
     string_a1 db "A6", 0
     string_a2 db "1DD", 0
 

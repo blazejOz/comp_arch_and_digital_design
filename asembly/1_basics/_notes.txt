@@ -1,15 +1,157 @@
-NASM (intel syntax)
+===============================================================================
+                    32-BIT x86 NASM ASSEMBLY REFERENCE SHEET
+===============================================================================
 
-compiling:
-nasm -f elf32 math.asm -o prog.o && gcc -m32 prog.o -o prog.out && ./prog.out
+1. ENVIRONMENT & COMPILATION
+-------------------------------------------------------------------------------
+Compiling 32-bit assembly on a 64-bit Linux (Fedora/Ubuntu) system:
+Command: nasm -f elf32 <file>.asm -o prog.o && gcc -m32 prog.o -o prog.out && ./prog.out
 
-INSTRUCTION DESTINATION, SOURCE
-mov eax, 27 - move value 27 into eax register
+for gdb(with nasm debug flags -g -F dwarf)
+nasm -g -F dwarf -f elf32 math.asm -o prog.o && gcc -m32 -g prog.o -o prog.out
+gdb -tui ./prog.out
 
-General Purpose Registers
+Syntax order: INSTRUCTION DESTINATION, SOURCE
+Mental model: destination = source
+Example:      mov eax, 27   -->   eax = 27
 
-EAX - accumulator, used to automatically in multiplication and division
-EBX - base register
-ECX - counter, often used in loops
-EDX - data, holds overflow//remainder in math operations
 
+2. THE REGISTER SYSTEM (32-bit General Purpose)
+-------------------------------------------------------------------------------
+* Data Registers:
+  EAX (Accumulator) : Used implicitly in MUL/DIV. Stores function return values.
+  EBX (Base)        : Used as a pointer to data in memory.
+  ECX (Counter)     : Used as a loop counter by LOOP and JECXZ instructions.
+  EDX (Data)        : Holds overflow/remainder values during math operations.
+
+* Index Registers:
+  ESI (Source Index)      : Pointer for source strings/arrays.
+  EDI (Destination Index) : Pointer for destination strings/arrays.
+
+* Pointer Registers:
+  ESP (Stack Pointer)       : Points to the current top item on the stack.
+  EBP (Base/Frame Pointer)  : Points to the base of the current stack frame.
+  EIP (Instruction Pointer) : Points to the next instruction (read-only).
+
+* Register Subdivisions (Crucial for 8-bit / 16-bit Bitmasking):
+  [ EAX (32-bit)                                   ]
+  [                       [ AX (16-bit)          ] ]
+  [                       [ AH (8-bit) ][ AL (8) ] ]
+
+  Available subsets: 
+  - AX, BX, CX, DX (Lower 16 bits)
+  - AH, BH, CH, DH (High byte of the lower 16 bits)
+  - AL, BL, CL, DL (Low byte of the lower 16 bits)
+
+
+3. DATA DIRECTIVES & MEMORY ACCESS
+-------------------------------------------------------------------------------
+* Variable Declarations (Data Segment):
+  db - Define Byte        (8 bits  / char)
+  dw - Define Word        (16 bits / short)
+  dd - Define Double Word (32 bits / int / float / pointer)
+
+* The Bracket Rule (Value vs. Address):
+  mov eax, var    --> Address Copy: eax = &var (Moves the memory address pointer)
+  mov eax, [var]  --> Value Copy:   eax = *var (Dereferences and moves actual data)
+
+
+4. CORE MATHEMATICS SET
+-------------------------------------------------------------------------------
+add dest, src   -->  dest += src
+sub dest, src   -->  dest -= src
+inc dest        -->  dest++ (Updates flags, PRESERVES Carry Flag 'CF')
+dec dest        -->  dest-- (Updates flags, PRESERVES Carry Flag 'CF')
+
+* Implicit Multiplication (MUL):
+  Syntax: mul src
+  Math:   Multiplies EAX by 'src'. 
+  Output: 64-bit split result. Upper 32 bits -> EDX, Lower 32 bits -> EAX.
+
+* Implicit Division (DIV):
+  Syntax: div src
+  Math:   Divides the combined 64-bit value [EDX:EAX] by 'src'.
+  Rule:   You MUST clear EDX (mov edx, 0) before dividing if dividend is 32-bit.
+  Output: EAX = Quotient (iloraz), EDX = Remainder (reszta / modulo).
+
+
+5. THE STACK
+-------------------------------------------------------------------------------
+* Stack grows DOWNWARD in memory (High address to Low address).
+push src   --> Decrements ESP by 4 bytes, copies 'src' onto the top of stack.
+pop dest   --> Copies top stack value into 'dest', increments ESP by 4 bytes.
+add esp, X --> Stack cleanup after calling C functions (e.g., printf). 
+               Add 4 bytes per pushed argument. (2 args = add esp, 8).
+
+
+6. CONTROL FLOW (Conditionals & Loops)
+-------------------------------------------------------------------------------
+* The Comparison:
+  cmp dest, src --> Performs secret subtraction (dest - src). Discards the 
+                    numerical answer, updates the EFLAGS register.
+
+* Core EFLAGS Status Lights:
+  ZF (Zero Flag)     : 1 if last result was exactly 0 (values are equal).
+  SF (Sign Flag)     : 1 if last result was negative (MSB is 1).
+  CF (Carry Flag)    : 1 if unsigned overflow/borrow occurred or bit shifted out.
+  OF (Overflow Flag) : 1 if signed overflow occurred.
+
+* Unsigned Jumps (Addresses, Unsigned Ints - Above/Below):
+  je / jz   - Jump if Equal / Jump if Zero (==)
+  jne / jnz - Jump if Not Equal / Jump if Not Zero (!=)
+  ja        - Jump if Above (>)
+  jae       - Jump if Above or Equal (>=)
+  jb / jc   - Jump if Below / Jump if Carry (<)
+  jbe       - Jump if Below or Equal (<=)
+
+* Signed Jumps (Standard Signed Integers - Greater/Less):
+  jg        - Jump if Greater (>)
+  jge       - Jump if Greater or Equal (>=)
+  jl        - Jump if Less (<)
+  jle       - Jump if Less or Equal (<=)
+
+* Hardware & Bitwise Flag Jumps:
+  jc        - Jump if Carry Flag is set (CF == 1)
+  jnc       - Jump if Carry Flag is clear (CF == 0)
+  js        - Jump if Sign Flag is set / Negative (SF == 1)
+  jns       - Jump if Sign Flag is clear / Positive or Zero (SF == 0)
+  jo        - Jump if Overflow Flag is set (OF == 1)
+  jno       - Jump if Overflow Flag is clear (OF == 0)
+  jp / jpe  - Jump if Parity / Even (PF == 1)
+  jnp / jpo - Jump if No Parity / Odd (PF == 0)
+
+* Optimization Jump:
+  jecxz     - Jump if ECX register is exactly zero. Used as a loop guard.
+
+* Standard Countdown Loop Template:
+  mov ecx, count
+  .loop_top:
+      ; ... loop body logic ... (Do not ruin ECX without saving it!)
+      dec ecx
+      jnz .loop_top
+
+
+7. BITWISE OPERATIONS
+-------------------------------------------------------------------------------
+* Logical Masks:
+  and dest, src --> Bitwise AND. Used to clear or isolate specific bits.
+  or dest, src  --> Bitwise OR. Used to force specific bits to 1.
+  xor dest, src --> Bitwise XOR. Different bits = 1. 'xor eax, eax' clears to 0.
+  not dest      --> Bitwise NOT. Flips all bits (Takes 1 operand).
+
+* Linear Shifts:
+  shl dest, count --> Shift Left. Right fills with 0. Leftmost bit enters CF.
+                      Multiplies unsigned integer by 2^count.
+  shr dest, count --> Shift Right (Logical). Left fills with 0. Rightmost bit enters CF.
+                      Divides unsigned integer by 2^count.
+
+* Circular Rotations:
+  rol dest, count --> Rotate Left. Outgoing left bits loop back into right side AND copy to CF.
+  ror dest, count --> Rotate Right. Outgoing right bits loop back into left side AND copy to CF.
+  rcl dest, count --> Rotate Left through Carry. Treats CF as a 33rd bit in the loop ring.
+  rcr dest, count --> Rotate Right through Carry. Treats CF as a 33rd bit in the loop ring.
+
+* Manual Flag Setters:
+  clc --> Force Clear Carry Flag (CF = 0)
+  stc --> Force Set Carry Flag (CF = 1)
+===============================================================================
