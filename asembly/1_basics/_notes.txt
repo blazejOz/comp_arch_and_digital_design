@@ -1,0 +1,15 @@
+NASM (intel syntax)
+
+compiling:
+nasm -f elf32 math.asm -o prog.o && gcc -m32 prog.o -o prog.out && ./prog.out
+
+INSTRUCTION DESTINATION, SOURCE
+mov eax, 27 - move value 27 into eax register
+
+General Purpose Registers
+
+EAX - accumulator, used to automatically in multiplication and division
+EBX - base register
+ECX - counter, often used in loops
+EDX - data, holds overflow//remainder in math operations
+
