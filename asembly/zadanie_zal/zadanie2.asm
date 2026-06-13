@@ -84,7 +84,6 @@ add_hex_strings:
     push ebp
     mov ebp, esp
 
-
     mov esi, [ebp + 8]
     mov edi, [ebp + 12]
     mov edx, [ebp + 16]
@@ -155,7 +154,7 @@ add_hex_strings:
     sub al, '0'
 .save_a2:
 
-add al, bl
+    add al, bl
     add al, cl
     xor ecx, ecx
 

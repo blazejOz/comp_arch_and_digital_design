@@ -1,6 +1,8 @@
 section .data
-    a1 db "111", 0
+    a1 db "A3F", 0
     a2 db "FFF", 0
+
+    msg_error db "Invalid input", 10, 0
     msg_print db "Result: %s", 10, 0
 
 section .bss
@@ -11,6 +13,18 @@ section .text
     global main
 
 main:
+    push a2
+    call validate_hex
+    add esp, 4
+    cmp eax, 0
+    je .invalid_input
+
+    push a1
+    call validate_hex
+    add esp, 4
+    cmp eax, 0
+    je .invalid_input
+
     mov esi, a1
 .find_end_a1:
     cmp byte [esi], 0
@@ -19,7 +33,6 @@ main:
     jmp .find_end_a1
 .calc_len_a1:
     dec esi
-
     mov edi, a2
 .find_end_a2:
     cmp byte [edi], 0
@@ -45,6 +58,48 @@ main:
     push msg_print
     call printf
     add esp, 8
+    ret
+
+.invalid_input:
+    push msg_error
+    call printf
+    add esp, 4
+    ret
+
+validate_hex:
+    push ebp
+    mov ebp, esp
+    mov edx, [ebp + 8]
+
+.next_char:
+    mov al, [edx]
+    cmp al, 0
+    je .all_valid
+
+    cmp al, '0'
+    jb .invalid
+    cmp al, '9'
+    jbe .valid
+
+    cmp al, 'A'
+    jb .invalid
+    cmp al, 'F'
+    jbe .valid
+
+.invalid:
+    mov eax, 0
+    jmp .done
+
+.valid:
+    inc edx
+    jmp .next_char
+
+.all_valid:
+    mov eax, 1
+
+.done:
+    mov esp, ebp
+    pop ebp
     ret
 
 add_recursive:
