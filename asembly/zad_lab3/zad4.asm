@@ -1,24 +1,29 @@
 section .data
-    msg db "%d",10 ,0
+    fmt db "result %d", 10, 0
 
 section .text
     extern printf
     global main
 
-main:
-    mov ecx, 3
-    mov eax, 0
 
-.loop_start:
+main:
+    xor eax, eax
+    mov ecx, 1
+
+.loop:
     add eax, ecx
-    dec ecx
-    jnz .loop_start
+    inc ecx
+
+    cmp ecx, 125
+    jbe .loop
+
     call print
+    xor eax, eax
     ret
 
 print:
     push eax
-    push msg
+    push fmt
     call printf
     add esp, 8
     ret

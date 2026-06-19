@@ -1,31 +1,31 @@
-section .data 
-    msg db "%d",10 ,0
+section .data
+    fmt db "result %d", 10, 0
 
 section .text
     extern printf
     global main
 
 main:
-    mov eax, 1764
-    mov ebx, 352
+    mov eax, 17
+    mov ebx, 35
     mul ebx
-    mov ecx, 2
-    mov edx, 0
-    div ecx
+    mov ebx, 2
+    xor edx, edx
+    div ebx
     cmp eax, 300000
-    jl .less_then
+    jb .below
     mov eax, 0
     call print
     ret
 
-.less_then:
+.below:
     mov eax, 1
     call print
     ret
 
 print:
     push eax
-    push msg
+    push fmt
     call printf
     add esp, 8
     ret
