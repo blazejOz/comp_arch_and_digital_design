@@ -1,6 +1,6 @@
 section .data
     fmt db "result %d", 10, 0
-    my_string db "Hello World", 0
+    my_string db "Hello World", 0   ; Nasz napis (zakończony 0)
 
 section .text
     extern printf
@@ -11,7 +11,7 @@ main:
     mov ebp, esp
 
     push my_string
-    call string_length
+    call count_words
     add esp, 4
 
     push eax
@@ -22,22 +22,27 @@ main:
     xor eax, eax
     pop ebp
     ret
-    
 
 
-string_length:
+count_words:
     push ebp
     mov ebp, esp
 
     mov edx, [ebp + 8]
     xor eax, eax
+    xor ecx, ecx
 
 .loop:
-    cmp byte [edx + eax], 0
+    cmp byte [edx + ecx], 0
     je .done
+    cmp byte [edx + ecx], 32
+    jne .not_space
     inc eax
+.not_space:
+    inc ecx
     jmp .loop
 
 .done:
+    inc eax
     pop ebp
     ret
